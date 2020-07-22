@@ -2,11 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
+import MyComponenet from "./MyComponent";
 import * as serviceWorker from './serviceWorker';
 
 ReactDOM.render(
   <React.StrictMode>
     <App />
+    <MyComponenet></MyComponenet>
   </React.StrictMode>,
   document.getElementById('root')
 );
