@@ -14,9 +14,14 @@ class Chat extends React.Component {
     }
 
     handleInput({ target }) {
-        this.setState({
-            chatBox: this.state.chatBox + this.state.chatInputValue  + "\n"
-        })
+        fetch("http://127.0.0.1:5050/message_post",{
+            method: "POST",
+            body: JSON.stringify({"message": this.state.chatInputValue}),
+        }).then(res => res.json()).then(data => {
+            this.setState({
+                chatBox: data.response
+            })
+        });
     }
 
     handleChange({ target }) {
