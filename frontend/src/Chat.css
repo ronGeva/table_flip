@@ -1,3 +1,11 @@
 .chatDiv {
-    margin-left: 200px;
+    margin-left: 70%;
+    border-width: 2px;
+    width: 30%;
+    height: 500px;
+}
+
+#chatBox {
+    width: 100%; /* This is 100% of the div's width */
+    height: 80%;
 }
