@@ -11,16 +11,35 @@ class Chat extends React.Component {
         }
         this.handleChange = this.handleChange.bind(this);
         this.handleInput = this.handleInput.bind(this);
+        this.setChatSyncInterval()
+        this.props.socket.on("new_message", (msg) => this.receive_new_data(msg));
+    }
+
+    receive_new_data(msg) {
+        alert(msg);
+    }
+
+    setChatSyncInterval(){
+        //this.timer = setInterval(()=> this.syncChat(), 10000)
+    }
+
+    syncChat() {
+        fetch("http://127.0.0.1:5050/get_chat",{
+            method: "GET",
+        }).then(res => res.json()).then(data => {
+            this.setState({
+                chatBox: data.chat
+            })
+        });
     }
 
     handleInput({ target }) {
         fetch("http://127.0.0.1:5050/message_post",{
             method: "POST",
-            body: JSON.stringify({"message": this.state.chatInputValue}),
+            body: JSON.stringify({"message": this.state.chatInputValue,
+                                        "username": this.props.username}),
         }).then(res => res.json()).then(data => {
-            this.setState({
-                chatBox: data.response
-            })
+            // do nothing
         });
     }
 
