@@ -9,11 +9,12 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.socket = io(ENDPOINT);
+    this.socket.connect()
   }
 
   render() {
     return <div className="App">
-      <Chat username="sample_user" usernameHash="unimplemented" socket={this.socket}/>
+      <Chat username="sample_user" usernameHash="unimplemented" socket={this.socket} room="1" />
     </div>
   }
 }
