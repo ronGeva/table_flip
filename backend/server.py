@@ -27,6 +27,11 @@ def send_message(message):
     emit("new_message", new_message, room=room)
 
 
+@socket_io.on("connect")
+def on_connect():
+    socket_io.emit("rooms_info", [{"name": "A nice room", "id": 123}, {"name": "A nicer room", "id": 125}])
+
+
 @socket_io.on("join_room")
 def client_join_room(data):
     join_room(data["room"])
