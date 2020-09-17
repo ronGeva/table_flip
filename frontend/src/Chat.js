@@ -24,6 +24,11 @@ class Chat extends React.Component {
         this.props.socket.on("new_message", (msg) => this.receive_new_data(msg));
         this.props.socket.emit("join_room", {"room": this.props.room, "username": this.props.username});
         this.props.socket.on("users_update", (msg) => this.update_room_users(msg))
+        setInterval(() =>this.sendKeepalive() , 1000);
+    }
+
+    sendKeepalive() {
+        this.props.socket.emit("client_keepalive");
     }
 
     update_room_users(msg) {

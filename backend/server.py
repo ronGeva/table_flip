@@ -2,7 +2,9 @@ from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 import json
+import time
 import os
+from threading import Lock, Thread
 
 from authentication import AuthenticationManager
 
@@ -16,21 +18,36 @@ authentication_manager = AuthenticationManager()
 
 
 class ChatsData(object):
+    rooms = {}
+    sid_to_username = {}
+    users_last_keepalive = {}
     message_history = {}
     clients = {}
+    lock = Lock()
 
     @staticmethod
     def add_new_client(client, room):
+        ChatsData.lock.acquire()
         if room not in ChatsData.clients:
             ChatsData.clients[room] = [client]
         elif client not in ChatsData.clients[room]:
             ChatsData.clients[room].append(client)
+        ChatsData.lock.release()
 
+    @staticmethod
+    def remove_client(sid):
+        ChatsData.lock.acquire()
+        ChatsData.users_last_keepalive.pop(sid)
+        username = ChatsData.sid_to_username.pop(sid)
 
-class Clients(object):
-    credentials = {"user1": "pass", "user2": "pass2"}  # TODO: use an actual DB and implement sign up
-    rooms = {}
-    sid_to_username = {}
+        for room in ChatsData.clients.keys():
+            if username in ChatsData.clients[room]:
+                ChatsData.clients[room].remove(username)
+        ChatsData.lock.release()
+
+    @staticmethod
+    def get_client_rooms(client):
+        return filter(lambda room: client in ChatsData.clients[room], ChatsData.clients.keys())
 
 
 @socket_io.on("send_message")
@@ -58,6 +75,12 @@ def client_join_room(data):
     socket_io.emit("users_update", {"users": ChatsData.clients[data["room"]]}, room=data["room"])
 
 
+def successful_authentication(sid, username):
+    ChatsData.sid_to_username[sid] = username
+    socket_io.emit("authentication_result", {"result": "ok"}, room=sid)
+    ChatsData.users_last_keepalive[sid] = time.time()
+
+
 @socket_io.on("authenticate")
 def authenticate(data):
     if "authenticationType" not in data.keys():
@@ -65,32 +88,53 @@ def authenticate(data):
     username, password = data["username"], data["password"]
     if data["authenticationType"] == "sign in":
         if authentication_manager.check_authentication(username, password):
-            Clients.sid_to_username[request.sid] = username
-            socket_io.emit("authentication_result", {"result": "ok"}, room=request.sid)
+            successful_authentication(request.sid, username)
         else:
             socket_io.emit("authentication_result", {"result": "failure"}, room=request.sid)
     if data["authenticationType"] == "sign up":
         try:
             authentication_manager.insert_new_user(username, password)
-            socket_io.emit("authentication_result", {"result": "ok"}, room=request.sid)
+            successful_authentication(request.sid, username)
         except AssertionError:
             socket_io.emit("authentication_result", {"result": "failure"}, room=request.sid)
 
 
-@socket_io.on("disconnect")
-def client_disconnect():
-    if request.sid not in Clients.sid_to_username:
-        return
-    username = Clients.sid_to_username[request.sid]
-    for room in ChatsData.clients.keys():
-        if username in ChatsData.clients[room]:
-            ChatsData.clients[room].remove(username)
+@socket_io.on("client_keepalive")
+def client_keepalive():
+    ChatsData.users_last_keepalive[request.sid] = time.time()
+
+
+def check_keepalives():
+    """
+    This routine runs in parallel to the server and checks for keepalive of the users. In case a user hasn't sent a
+    keepalive for a sufficiently large amount of time we asuume it has disconnected and remove him from the server.
+    In addition, in case we remove a client from the session, we update the users in all relevant rooms.
+    :return: None
+    """
+    while True:
+        disconnected_sids = []
+        rooms_to_update = set()
+        for sid in ChatsData.users_last_keepalive.keys():
+            last_keepalive = ChatsData.users_last_keepalive[sid]
+            if time.time() - last_keepalive > 5: # TODO: make this a const, or better yet a part of a logical component
+                disconnected_sids.append(sid)
+
+        for sid in disconnected_sids:
+            username = ChatsData.sid_to_username[sid]
+            rooms_to_update = rooms_to_update.union(set(ChatsData.get_client_rooms(username)))
+            ChatsData.remove_client(sid)
+
+        for room in rooms_to_update:
             socket_io.emit("users_update", {"users": ChatsData.clients[room]}, room=room)
-    Clients.sid_to_username.pop(request.sid)
+
+        time.sleep(1)
 
 
 def main():
+    t = Thread(target=check_keepalives)
+    t.start()
     socket_io.run(app, "localhost", 5050, debug=True)
+    t.join()
 
 
 if __name__ == '__main__':
