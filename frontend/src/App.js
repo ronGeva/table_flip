@@ -58,7 +58,8 @@ class App extends React.Component {
       roomsInfo : [],
       currentWindow: "authentication",
       currentRoom: null,
-      username: null
+      username: null,
+      confirmedUsername: null
     }
     this.socket = io(ENDPOINT);
   }
@@ -72,7 +73,8 @@ class App extends React.Component {
   handleAuthenticationResult(msg) {
     if (msg["result"] === "ok") {
       this.setState({
-        currentWindow: "rooms"
+        currentWindow: "rooms",
+        confirmedUsername: this.state.username
       })
     }
     if (msg["result"] === "failure") {
@@ -119,7 +121,7 @@ class App extends React.Component {
 
   render() {
     return <div className="App">
-      <UserStatus username={this.state.username}/>
+      <UserStatus username={this.state.confirmedUsername}/>
       {this.resolveCurrentWindow()}
     </div>
   }
