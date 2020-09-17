@@ -64,7 +64,7 @@ class App extends React.Component {
   }
 
   componentDidMount() {
-    this.socket.connect({'sync disconnect on unload': true});
+    this.socket.connect();
     this.socket.on("rooms_info", (msg) => this.updateRoomsInfo(msg));
     this.socket.on("authentication_result", (msg) => this.handleAuthenticationResult(msg))
   }

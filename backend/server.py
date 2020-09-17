@@ -18,6 +18,9 @@ authentication_manager = AuthenticationManager()
 
 
 class ChatsData(object):
+    rooms = {}
+    sid_to_username = {}
+    users_last_keepalive = {}
     message_history = {}
     clients = {}
     lock = Lock()
@@ -32,23 +35,19 @@ class ChatsData(object):
         ChatsData.lock.release()
 
     @staticmethod
-    def remove_client(client):
+    def remove_client(sid):
         ChatsData.lock.acquire()
+        ChatsData.users_last_keepalive.pop(sid)
+        username = ChatsData.sid_to_username.pop(sid)
+
         for room in ChatsData.clients.keys():
-            if client in ChatsData.clients[room]:
-                ChatsData.clients[room].remove(client)
+            if username in ChatsData.clients[room]:
+                ChatsData.clients[room].remove(username)
         ChatsData.lock.release()
 
     @staticmethod
     def get_client_rooms(client):
         return filter(lambda room: client in ChatsData.clients[room], ChatsData.clients.keys())
-
-
-class Clients(object):
-    credentials = {"user1": "pass", "user2": "pass2"}  # TODO: use an actual DB and implement sign up
-    rooms = {}
-    sid_to_username = {}
-    users_last_keepalive = {}
 
 
 @socket_io.on("send_message")
@@ -77,9 +76,9 @@ def client_join_room(data):
 
 
 def successful_authentication(sid, username):
-    Clients.sid_to_username[sid] = username
+    ChatsData.sid_to_username[sid] = username
     socket_io.emit("authentication_result", {"result": "ok"}, room=sid)
-    Clients.users_last_keepalive[sid] = time.time()
+    ChatsData.users_last_keepalive[sid] = time.time()
 
 
 @socket_io.on("authenticate")
@@ -100,30 +99,9 @@ def authenticate(data):
             socket_io.emit("authentication_result", {"result": "failure"}, room=request.sid)
 
 
-@socket_io.on("disconnect")
-def client_disconnect():
-    if request.sid not in Clients.sid_to_username:
-        return
-    clients_rooms = ChatsData.get_client_rooms(Clients.sid_to_username[request.sid])
-    remove_client_from_globals(request.sid)
-    for room in clients_rooms:
-        socket_io.emit("users_update", {"users": ChatsData.clients[room]}, room=room)
-
-
 @socket_io.on("client_keepalive")
 def client_keepalive():
-    Clients.users_last_keepalive[request.sid] = time.time()
-
-
-def remove_client_from_globals(sid):
-    """
-    Removes the client data from the program's globals, for example: from all the chat rooms, from the last keepalive
-    dictionary, etc.
-    :param sid: The sid of the client.
-    :return: None
-    """
-    Clients.users_last_keepalive.pop(sid)
-    ChatsData.remove_client(Clients.sid_to_username.pop(sid))
+    ChatsData.users_last_keepalive[request.sid] = time.time()
 
 
 def check_keepalives():
@@ -136,15 +114,15 @@ def check_keepalives():
     while True:
         disconnected_sids = []
         rooms_to_update = set()
-        for sid in Clients.users_last_keepalive.keys():
-            last_keepalive = Clients.users_last_keepalive[sid]
+        for sid in ChatsData.users_last_keepalive.keys():
+            last_keepalive = ChatsData.users_last_keepalive[sid]
             if time.time() - last_keepalive > 5: # TODO: make this a const, or better yet a part of a logical component
                 disconnected_sids.append(sid)
 
         for sid in disconnected_sids:
-            username = Clients.sid_to_username[sid]
+            username = ChatsData.sid_to_username[sid]
             rooms_to_update = rooms_to_update.union(set(ChatsData.get_client_rooms(username)))
-            remove_client_from_globals(sid)
+            ChatsData.remove_client(sid)
 
         for room in rooms_to_update:
             socket_io.emit("users_update", {"users": ChatsData.clients[room]}, room=room)
