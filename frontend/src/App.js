@@ -105,9 +105,19 @@ class App extends React.Component {
     })
   }
 
+  addRoom(roomName) {
+    this.socket.emit("add_room", {"room_name": roomName});
+  }
+
+  deleteRoom(roomName) {
+    this.socket.emit("delete_room", {"room_name": roomName});  // TODO: make this secured (requires credentials)
+  }
+
   resolveCurrentWindow() {
     if (this.state.currentWindow === "rooms") {
-      return <Rooms roomsProps={this.state.roomsInfo} goToRoomFunc={(roomID) => this.goToRoom(roomID)}/>;
+      return <Rooms roomsProps={this.state.roomsInfo} goToRoomFunc={(roomID) => this.goToRoom(roomID)}
+              addRoomFunc={(roomName) => this.addRoom(roomName)}
+              deleteRoomFunc={(roomName) => this.deleteRoom(roomName)}/>;
     }
     if (this.state.currentWindow === "chat") {
       return <Chat username={this.state.username} usernameHash="unimplemented" socket={this.socket}
