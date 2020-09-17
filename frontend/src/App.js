@@ -11,11 +11,13 @@ class AuthenticationWindow extends React.Component {
     super(props);
     this.state = {
       username: null,
-      password: null
+      password: null,
+      authenticationType: null
     }
     this.usernameChange = this.usernameChange.bind(this);
     this.passwordChange = this.passwordChange.bind(this);
     this.authenticate = this.authenticate.bind(this);
+    this.signUp = this.signUp.bind(this);
   }
 
   usernameChange({ target }) {
@@ -31,6 +33,16 @@ class AuthenticationWindow extends React.Component {
   }
 
   authenticate() {
+    this.setState({
+      authentication: "sign in"
+    });
+    this.props.authenticationFunc(this.state);
+  }
+
+  signUp() {
+    this.setState({
+      authentication: "sign up"
+    });
     this.props.authenticationFunc(this.state);
   }
 
@@ -43,6 +55,7 @@ class AuthenticationWindow extends React.Component {
         <input type="text" name="password" onChange={ this.passwordChange }/>
       </label>
       <input type="button" value="sign in" onClick={ this.authenticate }/>
+      <input type="button" value="sign up" onClick={ this.signUp }/>
     </form>
   }
 }
@@ -82,7 +95,7 @@ class App extends React.Component {
   authenticate(authenticationState) {
     this.socket.emit("authenticate",
         {"username": authenticationState.username, "password": authenticationState.password,
-        "authenticationType": "sign in"});
+        "authenticationType": authenticationState.authentication});
     this.setState({username: authenticationState.username});
   }
 
