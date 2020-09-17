@@ -11,6 +11,13 @@ class ChatsData(object):
     lock = Lock()
 
     @staticmethod
+    def remove_room(room):
+        ChatsData.lock.acquire()
+        ChatsData.clients.pop(room)
+        ChatsData.message_history.pop(room)
+        ChatsData.lock.release()
+
+    @staticmethod
     def add_new_client(client, room):
         ChatsData.lock.acquire()
         if room not in ChatsData.clients:

@@ -89,8 +89,10 @@ def add_room(data):
 def delete_room(data):
     if "room_name" not in data:
         return  # TODO: error message?
-    rooms_manager.delete_room(data["room_name"])
+    room_name = data["room_name"]
+    rooms_manager.delete_room(room_name)
     _emit_rooms_info(request.sid)
+    ChatsData.remove_room(room_name)  # TODO: take care of the situation in which users are in the room during deletion
 
 
 def check_keepalives():
