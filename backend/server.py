@@ -30,11 +30,6 @@ class Clients(object):
     sid_to_username = {}
 
 
-@app.route('/index', methods=['GET'])
-def main_page():
-    return "Hello world"
-
-
 @socket_io.on("send_message")
 def send_message(message):
     global message_history
