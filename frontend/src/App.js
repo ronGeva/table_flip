@@ -2,6 +2,7 @@ import React from 'react';
 import './App.css';
 import Chat from "./Chat";
 import Rooms from "./Rooms";
+import UserStatus from "./UserStatus"
 import io from 'socket.io-client';
 const ENDPOINT = "http://127.0.0.1:5050";
 
@@ -39,7 +40,7 @@ class AuthenticationWindow extends React.Component {
       <label>
         username:
         <input type="text" name="username" onChange={ this.usernameChange }/>
-        username:
+        password:
         <input type="text" name="password" onChange={ this.passwordChange }/>
       </label>
       <input type="button" value="sign in" onClick={ this.authenticate }/>
@@ -118,6 +119,7 @@ class App extends React.Component {
 
   render() {
     return <div className="App">
+      <UserStatus username={this.state.username}/>
       {this.resolveCurrentWindow()}
     </div>
   }
