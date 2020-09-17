@@ -4,12 +4,15 @@ from flask_socketio import SocketIO, emit, join_room
 import json
 import os
 
+from authentication import AuthenticationManager
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 CORS(app)
 socket_io = SocketIO(app, cors_allowed_origins="*")
 message_history = {}
 clients = []
+authentication_manager = AuthenticationManager()
 
 
 class ChatsData(object):
@@ -59,15 +62,19 @@ def client_join_room(data):
 def authenticate(data):
     if "authenticationType" not in data.keys():
         return  # TODO: send a faulty authentication message
+    username, password = data["username"], data["password"]
     if data["authenticationType"] == "sign in":
-        username, password = data["username"], data["password"]
-        if username in Clients.credentials and password == Clients.credentials[username]:
+        if authentication_manager.check_authentication(username, password):
             Clients.sid_to_username[request.sid] = username
             socket_io.emit("authentication_result", {"result": "ok"}, room=request.sid)
         else:
             socket_io.emit("authentication_result", {"result": "failure"}, room=request.sid)
     if data["authenticationType"] == "sign up":
-        pass
+        try:
+            authentication_manager.insert_new_user(username, password)
+            socket_io.emit("authentication_result", {"result": "ok"}, room=request.sid)
+        except AssertionError:
+            socket_io.emit("authentication_result", {"result": "failure"}, room=request.sid)
 
 
 @socket_io.on("disconnect")
