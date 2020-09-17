@@ -11,13 +11,11 @@ class AuthenticationWindow extends React.Component {
     super(props);
     this.state = {
       username: null,
-      password: null,
-      authenticationType: null
+      password: null
     }
     this.usernameChange = this.usernameChange.bind(this);
     this.passwordChange = this.passwordChange.bind(this);
     this.authenticate = this.authenticate.bind(this);
-    this.signUp = this.signUp.bind(this);
   }
 
   usernameChange({ target }) {
@@ -32,18 +30,8 @@ class AuthenticationWindow extends React.Component {
     });
   }
 
-  authenticate() {
-    this.setState({
-      authentication: "sign in"
-    });
-    this.props.authenticationFunc(this.state);
-  }
-
-  signUp() {
-    this.setState({
-      authentication: "sign up"
-    });
-    this.props.authenticationFunc(this.state);
+  authenticate({ target }) {
+    this.props.authenticationFunc(this.state, target.value);
   }
 
   render() {
@@ -55,7 +43,7 @@ class AuthenticationWindow extends React.Component {
         <input type="text" name="password" onChange={ this.passwordChange }/>
       </label>
       <input type="button" value="sign in" onClick={ this.authenticate }/>
-      <input type="button" value="sign up" onClick={ this.signUp }/>
+      <input type="button" value="sign up" onClick={ this.authenticate }/>
     </form>
   }
 }
@@ -86,16 +74,24 @@ class App extends React.Component {
         currentWindow: "rooms"
       })
     }
+    if (msg["result"] === "failure") {
+      if ("message" in msg) {
+        alert(msg["message"])
+      }
+      else {
+        alert("Authentication failed");
+      }
+    }
   }
 
   updateRoomsInfo(roomsInfo) {
     this.setState({roomsInfo: roomsInfo});
   }
 
-  authenticate(authenticationState) {
+  authenticate(authenticationState, authenticationType) {
     this.socket.emit("authenticate",
         {"username": authenticationState.username, "password": authenticationState.password,
-        "authenticationType": authenticationState.authentication});
+        "authenticationType": authenticationType});
     this.setState({username: authenticationState.username});
   }
 
@@ -115,7 +111,7 @@ class App extends React.Component {
                    room={this.state.currentRoom} />
     }
     if (this.state.currentWindow === "authentication") {
-      return <AuthenticationWindow authenticationFunc={(data) => this.authenticate(data)}/>;
+      return <AuthenticationWindow authenticationFunc={(data, authType) => this.authenticate(data, authType)}/>;
     }
     alert("Failed resolving current window")
   }
