@@ -58,7 +58,6 @@ class App extends React.Component {
       currentRoom: null,
       username: null
     }
-    this.rooms = <Rooms roomsProps={this.state.roomsInfo} goToRoomFunc={this.goToRoom}/>
     this.socket = io(ENDPOINT);
   }
 
