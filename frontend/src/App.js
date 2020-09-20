@@ -1,7 +1,7 @@
 import React from 'react';
 import './App.css';
-import Chat from "./Chat";
-import Rooms from "./Rooms";
+import Room from "./Room";
+import Lobby from "./Lobby";
 import UserStatus from "./UserStatus"
 import io from 'socket.io-client';
 const ENDPOINT = "http://127.0.0.1:5050";
@@ -115,12 +115,12 @@ class App extends React.Component {
 
   resolveCurrentWindow() {
     if (this.state.currentWindow === "rooms") {
-      return <Rooms roomsProps={this.state.roomsInfo} goToRoomFunc={(roomID) => this.goToRoom(roomID)}
-              addRoomFunc={(roomName) => this.addRoom(roomName)}
-              deleteRoomFunc={(roomName) => this.deleteRoom(roomName)}/>;
+      return <Lobby roomsProps={this.state.roomsInfo} goToRoomFunc={(roomID) => this.goToRoom(roomID)}
+                    addRoomFunc={(roomName) => this.addRoom(roomName)}
+                    deleteRoomFunc={(roomName) => this.deleteRoom(roomName)}/>;
     }
     if (this.state.currentWindow === "chat") {
-      return <Chat username={this.state.username} usernameHash="unimplemented" socket={this.socket}
+      return <Room username={this.state.username} usernameHash="unimplemented" socket={this.socket}
                    room={this.state.currentRoom} />
     }
     if (this.state.currentWindow === "authentication") {

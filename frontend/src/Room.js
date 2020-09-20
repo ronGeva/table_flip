@@ -1,5 +1,6 @@
 import React from 'react';
-import './Chat.css'
+import './Room.css'
+import Board from "./Board";
 
 class ChatDetails extends React.Component {
     render() {
@@ -11,7 +12,7 @@ class ChatDetails extends React.Component {
     }
 }
 
-class Chat extends React.Component {
+class Room extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -52,7 +53,11 @@ class Chat extends React.Component {
     }
 
     render() {
-        return <div className="chatDiv border">
+        return <div id="roomDiv">
+        <div id="boardDiv">
+            <Board></Board>
+        </div>
+        <div className="chatDiv border">
             <ChatDetails roomName={this.props.room} users={this.state.users}> </ChatDetails>
             <br/>
             <textarea disabled id="chatBox" value={ this.state.chatBox }>
@@ -64,8 +69,9 @@ class Chat extends React.Component {
                 </label>
                 <input type="button" value="send" onClick={ this.handleInput }/>
             </form>
+        </div>
         </div>;
     }
 }
 
-export default Chat;
+export default Room;

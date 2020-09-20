@@ -20,7 +20,7 @@ class RoomView extends React.Component {
 }
 
 
-class Rooms extends React.Component {
+class Lobby extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -56,4 +56,4 @@ class Rooms extends React.Component {
     }
 }
 
-export default Rooms;
+export default Lobby;
