@@ -1,12 +1,12 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, session
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
-import json
 import time
 import os
-from threading import Lock, Thread
+from threading import Thread
 
 from authentication import AuthenticationManager
+from rooms import ChatsData, RoomsManager
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -15,39 +15,7 @@ socket_io = SocketIO(app, cors_allowed_origins="*")
 message_history = {}
 clients = []
 authentication_manager = AuthenticationManager()
-
-
-class ChatsData(object):
-    rooms = {}
-    sid_to_username = {}
-    users_last_keepalive = {}
-    message_history = {}
-    clients = {}
-    lock = Lock()
-
-    @staticmethod
-    def add_new_client(client, room):
-        ChatsData.lock.acquire()
-        if room not in ChatsData.clients:
-            ChatsData.clients[room] = [client]
-        elif client not in ChatsData.clients[room]:
-            ChatsData.clients[room].append(client)
-        ChatsData.lock.release()
-
-    @staticmethod
-    def remove_client(sid):
-        ChatsData.lock.acquire()
-        ChatsData.users_last_keepalive.pop(sid)
-        username = ChatsData.sid_to_username.pop(sid)
-
-        for room in ChatsData.clients.keys():
-            if username in ChatsData.clients[room]:
-                ChatsData.clients[room].remove(username)
-        ChatsData.lock.release()
-
-    @staticmethod
-    def get_client_rooms(client):
-        return filter(lambda room: client in ChatsData.clients[room], ChatsData.clients.keys())
+rooms_manager = RoomsManager()
 
 
 @socket_io.on("send_message")
@@ -60,12 +28,17 @@ def send_message(message):
     emit("new_message", new_message, room=room)
 
 
+def _emit_rooms_info(sid):
+    rooms = rooms_manager.get_all_rooms()
+    rooms_info = [{"name": rooms[i], "id": i} for i in xrange(len(rooms))]  # TODO: make the unique ID better
+    socket_io.emit("rooms_info", rooms_info, room=sid)
+
+
 @socket_io.on("connect")
 def on_connect():
     room = session.get('room')
     join_room(room)
-    socket_io.emit("rooms_info", [{"name": "A nice room", "id": 123}, {"name": "A nicer room", "id": 125}],
-                   room=request.sid)
+    _emit_rooms_info(request.sid)
 
 
 @socket_io.on("join_room")
@@ -104,6 +77,24 @@ def client_keepalive():
     ChatsData.users_last_keepalive[request.sid] = time.time()
 
 
+@socket_io.on("add_room")
+def add_room(data):
+    if "room_name" not in data:
+        return  # TODO: error message?
+    rooms_manager.add_room(data["room_name"])
+    _emit_rooms_info(request.sid)
+
+
+@socket_io.on("delete_room")
+def delete_room(data):
+    if "room_name" not in data:
+        return  # TODO: error message?
+    room_name = data["room_name"]
+    rooms_manager.delete_room(room_name)
+    _emit_rooms_info(request.sid)
+    ChatsData.remove_room(room_name)  # TODO: take care of the situation in which users are in the room during deletion
+
+
 def check_keepalives():
     """
     This routine runs in parallel to the server and checks for keepalive of the users. In case a user hasn't sent a
@@ -120,6 +111,8 @@ def check_keepalives():
                 disconnected_sids.append(sid)
 
         for sid in disconnected_sids:
+            if sid not in ChatsData.sid_to_username:
+                continue  # user has already been removed successfully
             username = ChatsData.sid_to_username[sid]
             rooms_to_update = rooms_to_update.union(set(ChatsData.get_client_rooms(username)))
             ChatsData.remove_client(sid)
