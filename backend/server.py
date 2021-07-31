@@ -30,7 +30,7 @@ def send_message(message):
 
 def _emit_rooms_info(sid):
     rooms = rooms_manager.get_all_rooms()
-    rooms_info = [{"name": rooms[i], "id": i} for i in xrange(len(rooms))]  # TODO: make the unique ID better
+    rooms_info = [{"name": rooms[i], "id": i} for i in range(len(rooms))]  # TODO: make the unique ID better
     socket_io.emit("rooms_info", rooms_info, room=sid)
 
 
