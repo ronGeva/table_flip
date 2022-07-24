@@ -1,4 +1,5 @@
 from flask import Flask, request, session
+from flask_session import Session
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 import time
@@ -8,8 +9,10 @@ from threading import Thread
 from authentication import AuthenticationManager
 from rooms import ChatsData, RoomsManager
 
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+Session(app)
 CORS(app)
 socket_io = SocketIO(app, cors_allowed_origins="*")
 message_history = {}
@@ -95,6 +98,12 @@ def delete_room(data):
     ChatsData.remove_room(room_name)  # TODO: take care of the situation in which users are in the room during deletion
 
 
+@socket_io.on("draw")
+def draw_on_board(data):
+    room = data['room']
+    emit("draw", data, room=room)
+
+
 def check_keepalives():
     """
     This routine runs in parallel to the server and checks for keepalive of the users. In case a user hasn't sent a
@@ -120,7 +129,9 @@ def check_keepalives():
         for room in rooms_to_update:
             socket_io.emit("users_update", {"users": ChatsData.clients[room]}, room=room)
 
-        time.sleep(1)
+        # FIXME if this is removed the clients' emit are buffered when there are 2+ clients.
+        socket_io.emit("wakeup", {})
+        time.sleep(0.05)
 
 
 def main():

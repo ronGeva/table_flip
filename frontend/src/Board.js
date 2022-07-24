@@ -11,14 +11,19 @@ class Board extends React.Component {
             lastY: null
         };
 
+        this.boardRef = React.createRef();
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleMouseDown = this.handleMouseDown.bind(this);
     }
 
+    componentDidMount() {
+        console.log("Binding draw message to draw function...")
+        this.props.socket.on("draw", (msg) => this.draw(msg));
+    }
+
     handleMouseDown(event) {
         if (!this.state.isMouseDown) {
-            console.log(event.clientX, event.clientY);
             this.setState({
                 isMouseDown: true,
                 lastX: parseInt(event.clientX),
@@ -35,23 +40,23 @@ class Board extends React.Component {
         }
     }
 
-    draw(prev_x, prev_y, x, y, canvasElement) {
-        const rect = canvasElement.getBoundingClientRect();
-        console.log(rect.height, rect.width, rect.right, rect.bottom);
-        console.log(prev_x, prev_y, x, y);
-        let ctx = canvasElement.getContext("2d")
+    sendDrawMessage(prev_x, prev_y, x, y) {
+        this.props.socket.emit("draw", {"prev_x": prev_x, "prev_y": prev_y, "x": x, "y": y, "room": this.props.room});
+    }
+
+    draw(msg) {
+        console.log("Got draw message!");
+        const prev_x = msg["prev_x"];
+        const prev_y = msg["prev_y"];
+        const x = msg["x"];
+        const y = msg["y"];
+        let ctx = this.boardRef.current.getContext("2d")
         ctx.moveTo(prev_x, prev_y);
         ctx.lineTo(x, y);
         ctx.stroke();
-
-        /*
-        ctx.moveTo(0, 0);
-        ctx.lineTo(50, 120);
-        ctx.stroke(); */
     }
 
     calcDistance(prev_x, prev_y, x, y) {
-        return 100;
         return Math.sqrt(Math.pow(Math.abs(y - prev_y), 2) + Math.pow(Math.abs(x - prev_x), 2));
     }
 
@@ -60,7 +65,8 @@ class Board extends React.Component {
         let new_y = parseInt(event.clientY);
         if (this.state.isMouseDown &&
             this.calcDistance(this.state.lastX, this.state.lastY, new_x, new_y) > 5) {
-            this.draw(this.state.lastX, this.state.lastY, new_x, new_y, event.target);
+            //this.draw(this.state.lastX, this.state.lastY, new_x, new_y, event.target);
+            this.sendDrawMessage(this.state.lastX, this.state.lastY, new_x, new_y)
             this.setState({
                 lastX: new_x,
                 lastY: new_y
@@ -71,7 +77,8 @@ class Board extends React.Component {
     render() {
         return  <canvas id="boardCanvas" onMouseDown={this.handleMouseDown}
                         onMouseUp={this.handleMouseUp} onMouseMove={this.handleMouseMove}
-                        width={window.innerWidth * 0.69} height={window.innerHeight * 0.69}/>
+                        width={window.innerWidth * 0.69} height={window.innerHeight * 0.69}
+                        ref={this.boardRef}/>
     }
 }
 

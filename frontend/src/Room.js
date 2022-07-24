@@ -55,7 +55,7 @@ class Room extends React.Component {
     render() {
         return <div id="roomDiv">
         <div id="boardDiv">
-            <Board></Board>
+            <Board socket={this.props.socket} room={this.props.room}> </Board>
         </div>
         <div className="chatDiv border">
             <ChatDetails roomName={this.props.room} users={this.state.users}> </ChatDetails>
