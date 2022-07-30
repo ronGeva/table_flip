@@ -39,7 +39,7 @@ class ChatsData(object):
 
     @staticmethod
     def get_client_rooms(client):
-        return filter(lambda room: client in ChatsData.clients[room], ChatsData.clients.keys())
+        return [room for room in ChatsData.clients.keys() if client in ChatsData.clients[room]]
 
 
 class RoomsManager(object):
