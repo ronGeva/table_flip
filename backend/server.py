@@ -14,7 +14,10 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 Session(app)
 CORS(app)
-socket_io = SocketIO(app, cors_allowed_origins="*")
+
+socket_io = SocketIO(app, cors_allowed_origins="http://localhost:3000")
+
+
 message_history = {}
 clients = []
 authentication_manager = AuthenticationManager()
@@ -39,10 +42,14 @@ def _emit_rooms_info(sid):
 
 @socket_io.on("connect")
 def on_connect():
-    room = session.get('room')
-    join_room(room)
-    _emit_rooms_info(request.sid)
+    print('hey !!!!')
+    #room = session.get('room')
+    #join_room(room)
+    #_emit_rooms_info(request.sid)
 
+@socket_io.on("newMsg")
+def on_new_msg(data):
+    print('newMsg !!!!2', data)
 
 @socket_io.on("join_room")
 def client_join_room(data):
@@ -130,15 +137,15 @@ def check_keepalives():
             socket_io.emit("users_update", {"users": ChatsData.clients[room]}, room=room)
 
         # FIXME if this is removed the clients' emit are buffered when there are 2+ clients.
-        socket_io.emit("wakeup", {})
-        time.sleep(0.05)
+       #socket_io.emit("wakeup", {})
+       #time.sleep(0.05)
 
 
 def main():
-    t = Thread(target=check_keepalives)
-    t.start()
+    #t = Thread(target=check_keepalives)
+    #t.start()
     socket_io.run(app, "localhost", 5050, debug=True)
-    t.join()
+    #t.join()
 
 
 if __name__ == '__main__':
