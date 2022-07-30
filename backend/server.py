@@ -43,9 +43,10 @@ def _emit_rooms_info(sid):
 @socket_io.on("connect")
 def on_connect():
     print('hey !!!!')
-    #room = session.get('room')
-    #join_room(room)
-    #_emit_rooms_info(request.sid)
+    room = session.get('room')
+    if room is not None:
+        join_room(room)
+    _emit_rooms_info(request.sid)
 
 @socket_io.on("newMsg")
 def on_new_msg(data):
