@@ -3,11 +3,13 @@ import './Room.css'
 import './Board.css'
 
 const BOARD_PEN_ID = "boardPen";
-const BOARD_ERASER_ID = "boardEraser"
+const BOARD_ERASER_ID = "boardEraser";
+const BOARD_CLEAR_ID = "boardClear";
 
 let DEFAULT_BUTTON_SOURCES = {}
 DEFAULT_BUTTON_SOURCES[BOARD_PEN_ID] = "pen.png"
 DEFAULT_BUTTON_SOURCES[BOARD_ERASER_ID] = "eraser.png"
+DEFAULT_BUTTON_SOURCES[BOARD_CLEAR_ID] = "clear.png"
 
 const CLICKED_BUTTON_SOURCES = {};
 CLICKED_BUTTON_SOURCES[BOARD_PEN_ID] = "pen_chosen.png";
@@ -43,6 +45,7 @@ class Board extends React.Component {
     componentDidMount() {
         console.log("Binding draw message to draw function...")
         this.props.socket.on("draw", (msg) => this.draw(msg));
+        this.props.socket.on("clear", (msg) => this.clearBoard());
     }
 
     handleMouseDown(event) {
@@ -127,8 +130,11 @@ class Board extends React.Component {
         this.setState(buttonImages);
     }
 
-    buttonClick(event) {
-        const clickedElementID = event.currentTarget.id;
+    /*
+    * Set the clicked button as the "pressed down button" and "unclick" all other buttons by reverting them to their
+    * default sources.
+    */
+    setMarkedButton(clickedElementID) {
         this.unclickOtherButtons(clickedElementID);
 
         let buttonImages = this.state.buttonImages;
@@ -136,6 +142,22 @@ class Board extends React.Component {
 
         this.setState(buttonImages);
         this.setState({"clickedButton": clickedElementID} );
+    }
+
+    /*
+    * Sends a message to all the guests in the room indicating the clients to clear the board.
+    * */
+    sendClearBoardMessage() {
+        this.props.socket.emit("clear", {"room": this.props.room});
+    }
+
+    clearBoard() {
+        let ctx = this.boardRef.current.getContext('2d');
+        ctx.clearRect(0, 0, this.boardRef.current.width, this.boardRef.current.height);
+    }
+
+    buttonClick(event) {
+        const clickedElementID = event.currentTarget.id;
 
         // Handle other edge-cases we need to figure out
         let penAttribtues = this.state.penAttributes;
@@ -143,10 +165,15 @@ class Board extends React.Component {
             case BOARD_PEN_ID:
                 penAttribtues.color = DEFAULT_PEN_COLOR;
                 penAttribtues.width = DEFAULT_PEN_WIDTH;
+                this.setMarkedButton(clickedElementID);
                 break;
             case BOARD_ERASER_ID:
                 penAttribtues.color = DEFAULT_ERASER_COLOR;
                 penAttribtues.width = DEFAULT_ERASER_WIDTH;
+                this.setMarkedButton(clickedElementID);
+                break;
+            case BOARD_CLEAR_ID:
+                this.sendClearBoardMessage();
                 break;
             default:
                 break;
@@ -166,6 +193,8 @@ class Board extends React.Component {
                              alt="pen" onClick={this.buttonClick}/>
                         <img className="boardButton" id={BOARD_ERASER_ID} src={this.state.buttonImages.boardEraser}
                              alt="eraser" onClick={this.buttonClick}/>
+                        <img className="boardButton" id={BOARD_CLEAR_ID} src={this.state.buttonImages.boardClear}
+                             alt="clear" onClick={this.buttonClick}/>
                     </div>
                 </div>
 

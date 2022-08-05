@@ -102,6 +102,12 @@ def draw_on_board(sid, data):
     sio.emit("draw", data, room=room)
 
 
+@sio.on("clear")
+def draw_on_board(sid, data):
+    room = data['room']
+    sio.emit("clear", data, room=room)
+
+
 def main():
     eventlet.wsgi.server(eventlet.listen(('', 5050)), app)
 
