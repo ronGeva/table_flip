@@ -1,0 +1,29 @@
+.chatDiv {
+    margin-left: 70%;
+    border-width: 2px;
+    width: 30%;
+    height: 500px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#chatBox {
+    width: 100%; /* This is 100% of the div's width */
+    height: 80%;
+}
+
+#boardDiv {
+    width: 70%;
+    height: 70%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#boardCanvas {
+    /*width: 100%; /* This is 100% of the div's width */
+    /*height: 100%;*/
+    border-style: solid;
+    margin-right: 80%;
+}
