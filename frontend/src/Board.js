@@ -40,6 +40,7 @@ class Board extends React.Component {
         this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleMouseDown = this.handleMouseDown.bind(this);
         this.buttonClick = this.buttonClick.bind(this);
+        this.onChangeWidth = this.onChangeWidth.bind(this);
     }
 
     componentDidMount() {
@@ -181,6 +182,12 @@ class Board extends React.Component {
         this.setState(penAttribtues);
     }
 
+    onChangeWidth(event) {
+        let penAttributes = this.state.penAttributes;
+        penAttributes.width = event.target.value;
+        this.setState(penAttributes);
+    }
+
     render() {
         return  <div>
                     <p> <canvas id="boardCanvas" onMouseDown={this.handleMouseDown}
@@ -195,6 +202,8 @@ class Board extends React.Component {
                              alt="eraser" onClick={this.buttonClick}/>
                         <img className="boardButton" id={BOARD_CLEAR_ID} src={this.state.buttonImages.boardClear}
                              alt="clear" onClick={this.buttonClick}/>
+                        <input className="boardButton" id="penWidthInput" type="range" min="1" max="100"
+                               value={this.state.penAttributes.width} onChange={this.onChangeWidth}/>
                     </div>
                 </div>
 
