@@ -1,0 +1,14 @@
+{
+  "name": "table-flip-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "nodemon --exec 'pwd && python3 server.py' server.py",
+    "install": "yarn uninstall && pip3 install -r requirements.txt",
+    "uninstall": "pip3 freeze | xargs pip3 uninstall -y",
+    "updateReq": "pip3 freeze > requirements.txt"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.19"
+  }
+}
