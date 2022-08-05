@@ -1,6 +1,22 @@
 import React from "react";
 import './Room.css'
+import './Board.css'
 
+const BOARD_PEN_ID = "boardPen";
+const BOARD_ERASER_ID = "boardEraser"
+
+let DEFAULT_BUTTON_SOURCES = {}
+DEFAULT_BUTTON_SOURCES[BOARD_PEN_ID] = "pen.png"
+DEFAULT_BUTTON_SOURCES[BOARD_ERASER_ID] = "eraser.png"
+
+const CLICKED_BUTTON_SOURCES = {};
+CLICKED_BUTTON_SOURCES[BOARD_PEN_ID] = "pen_chosen.png";
+CLICKED_BUTTON_SOURCES[BOARD_ERASER_ID] = "eraser_chosen.png";
+
+const DEFAULT_PEN_COLOR = '#000000';
+const DEFAULT_ERASER_COLOR = '#ffffff';
+const DEFAULT_PEN_WIDTH = 1;
+const DEFAULT_ERASER_WIDTH = 5;
 
 class Board extends React.Component {
     constructor(props) {
@@ -8,13 +24,20 @@ class Board extends React.Component {
         this.state = {
             isMouseDown : false,
             lastX: null,
-            lastY: null
+            lastY: null,
+            clickedButton : null,
+            buttonImages: {...DEFAULT_BUTTON_SOURCES},
+            penAttributes: {
+                color: DEFAULT_PEN_COLOR,
+                width: DEFAULT_PEN_WIDTH,
+            },
         };
 
         this.boardRef = React.createRef();
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
         this.handleMouseDown = this.handleMouseDown.bind(this);
+        this.buttonClick = this.buttonClick.bind(this);
     }
 
     componentDidMount() {
@@ -41,7 +64,8 @@ class Board extends React.Component {
     }
 
     sendDrawMessage(prev_x, prev_y, x, y) {
-        this.props.socket.emit("draw", {"prev_x": prev_x, "prev_y": prev_y, "x": x, "y": y, "room": this.props.room});
+        this.props.socket.emit("draw", {"prev_x": prev_x, "prev_y": prev_y, "x": x, "y": y, "room": this.props.room,
+                                        "penAttributes": this.state.penAttributes});
     }
 
     draw(msg) {
@@ -50,7 +74,11 @@ class Board extends React.Component {
         const prev_y = msg["prev_y"];
         const x = msg["x"];
         const y = msg["y"];
+        const color = msg["penAttributes"].color;
         let ctx = this.boardRef.current.getContext("2d")
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = msg["penAttributes"].width;
         ctx.moveTo(prev_x, prev_y);
         ctx.lineTo(x, y);
         ctx.stroke();
@@ -60,12 +88,11 @@ class Board extends React.Component {
         return Math.sqrt(Math.pow(Math.abs(y - prev_y), 2) + Math.pow(Math.abs(x - prev_x), 2));
     }
 
-    handleMouseMove(event) {
+    penMouseMoveHandle(event) {
         let new_x = parseInt(event.clientX);
         let new_y = parseInt(event.clientY);
         if (this.state.isMouseDown &&
             this.calcDistance(this.state.lastX, this.state.lastY, new_x, new_y) > 5) {
-            //this.draw(this.state.lastX, this.state.lastY, new_x, new_y, event.target);
             this.sendDrawMessage(this.state.lastX, this.state.lastY, new_x, new_y)
             this.setState({
                 lastX: new_x,
@@ -74,11 +101,74 @@ class Board extends React.Component {
         }
     }
 
+    handleMouseMove(event) {
+        switch (this.state.clickedButton) {
+            case BOARD_PEN_ID:
+            case BOARD_ERASER_ID:
+                // Eraser and pen draws are handled exactly the same except eraser always has the color white.
+                this.penMouseMoveHandle(event);
+                break;
+            case null:
+                console.log("Reached default case, button is yet to be chosen");
+                break;
+            default:
+                console.error("Something has gone wrong, contact the devs!");
+        }
+    }
+
+    unclickOtherButtons(clickedButtonId) {
+        let buttonImages = this.state.buttonImages;
+        for (const [buttonID, _] of Object.entries(buttonImages)) {
+            if (buttonID !== clickedButtonId) {
+                console.log("Changing " + buttonID + " to " + DEFAULT_BUTTON_SOURCES[buttonID]);
+                buttonImages[buttonID] = DEFAULT_BUTTON_SOURCES[buttonID];
+            }
+        }
+        this.setState(buttonImages);
+    }
+
+    buttonClick(event) {
+        const clickedElementID = event.currentTarget.id;
+        this.unclickOtherButtons(clickedElementID);
+
+        let buttonImages = this.state.buttonImages;
+        buttonImages[clickedElementID] = CLICKED_BUTTON_SOURCES[clickedElementID];
+
+        this.setState(buttonImages);
+        this.setState({"clickedButton": clickedElementID} );
+
+        // Handle other edge-cases we need to figure out
+        let penAttribtues = this.state.penAttributes;
+        switch(clickedElementID) {
+            case BOARD_PEN_ID:
+                penAttribtues.color = DEFAULT_PEN_COLOR;
+                penAttribtues.width = DEFAULT_PEN_WIDTH;
+                break;
+            case BOARD_ERASER_ID:
+                penAttribtues.color = DEFAULT_ERASER_COLOR;
+                penAttribtues.width = DEFAULT_ERASER_WIDTH;
+                break;
+            default:
+                break;
+        }
+        this.setState(penAttribtues);
+    }
+
     render() {
-        return  <canvas id="boardCanvas" onMouseDown={this.handleMouseDown}
+        return  <div>
+                    <p> <canvas id="boardCanvas" onMouseDown={this.handleMouseDown}
                         onMouseUp={this.handleMouseUp} onMouseMove={this.handleMouseMove}
                         width={window.innerWidth * 0.69} height={window.innerHeight * 0.69}
                         ref={this.boardRef}/>
+                    </p>
+                    <div id="boardIndex">
+                        <img className="boardButton" id={BOARD_PEN_ID} src={this.state.buttonImages.boardPen}
+                             alt="pen" onClick={this.buttonClick}/>
+                        <img className="boardButton" id={BOARD_ERASER_ID} src={this.state.buttonImages.boardEraser}
+                             alt="eraser" onClick={this.buttonClick}/>
+                    </div>
+                </div>
+
     }
 }
 
