@@ -1,15 +1,19 @@
 import React from "react";
 import './Room.css'
 import './Board.css'
+import './ImageDialog'
+import ImageDialog from "./ImageDialog";
 
 const BOARD_PEN_ID = "boardPen";
 const BOARD_ERASER_ID = "boardEraser";
 const BOARD_CLEAR_ID = "boardClear";
+const BOARD_ADD_IMAGE_ID = "addImage";
 
-let DEFAULT_BUTTON_SOURCES = {}
-DEFAULT_BUTTON_SOURCES[BOARD_PEN_ID] = "pen.png"
-DEFAULT_BUTTON_SOURCES[BOARD_ERASER_ID] = "eraser.png"
-DEFAULT_BUTTON_SOURCES[BOARD_CLEAR_ID] = "clear.png"
+let DEFAULT_BUTTON_SOURCES = {};
+DEFAULT_BUTTON_SOURCES[BOARD_PEN_ID] = "pen.png";
+DEFAULT_BUTTON_SOURCES[BOARD_ERASER_ID] = "eraser.png";
+DEFAULT_BUTTON_SOURCES[BOARD_CLEAR_ID] = "clear.png";
+DEFAULT_BUTTON_SOURCES[BOARD_ADD_IMAGE_ID] = "plus.jpg";
 
 const CLICKED_BUTTON_SOURCES = {};
 CLICKED_BUTTON_SOURCES[BOARD_PEN_ID] = "pen_chosen.png";
@@ -33,6 +37,9 @@ class Board extends React.Component {
                 color: DEFAULT_PEN_COLOR,
                 width: DEFAULT_PEN_WIDTH,
             },
+            imageDialogOn: false,
+            images: [],
+            draggedImage: null,
         };
 
         this.boardRef = React.createRef();
@@ -41,12 +48,19 @@ class Board extends React.Component {
         this.handleMouseDown = this.handleMouseDown.bind(this);
         this.buttonClick = this.buttonClick.bind(this);
         this.onChangeWidth = this.onChangeWidth.bind(this);
+        this.dropImage = this.dropImage.bind(this);
+        this.imageSelect = this.imageSelect.bind(this);
+        this.imageDrag = this.imageDrag.bind(this);
+        this.dropImageToCanvas = this.dropImageToCanvas.bind(this);
+        this.drawImageOnCanvas = this.drawImageOnCanvas.bind(this);
     }
 
     componentDidMount() {
         console.log("Binding draw message to draw function...")
         this.props.socket.on("draw", (msg) => this.draw(msg));
         this.props.socket.on("clear", (msg) => this.clearBoard());
+        this.props.socket.on("newImage", (msg) => this.handleServerNewImageMsg(msg));
+        this.props.socket.on("drawImageOnCanvas", (msg) => this.drawImageOnCanvas(msg));
     }
 
     handleMouseDown(event) {
@@ -60,6 +74,7 @@ class Board extends React.Component {
     }
 
     handleMouseUp(event) {
+        console.log("mouse up!");
         if (this.state.isMouseDown) {
             this.setState({
                 isMouseDown: false
@@ -188,12 +203,70 @@ class Board extends React.Component {
         this.setState(penAttributes);
     }
 
+    dropImage(event) {
+        event.preventDefault();
+        if (this.state.draggedImage !== null) {
+            console.log("Ignoring drag, image came from uploaded images...");
+            return;
+        }
+        let uploadFile = event.dataTransfer.files[0];
+        this.props.socket.emit("img_upload", {"image_name": uploadFile.name, "data": uploadFile,
+            "room": this.props.room});
+    }
+
+    dragOver(event) {
+        console.log("Drop event was triggered...");
+        event.preventDefault();
+    }
+
+    imageSelect(event) {
+        this.setState({imageDialogOn: !this.state.imageDialogOn});
+    }
+
+    imageDrag(event) {
+        event.preventDefault(); // TODO: is this necessary?
+        const imageID = event.target.getAttribute("data-server-img-id");
+        this.setState({draggedImage: imageID});
+    }
+
+    handleServerNewImageMsg(msg) {
+        let images = this.state.images;
+        images.push(
+            <img className="dialogImage" src={"data:image/jpg;base64," + msg["base64_data"]} onDrag={this.imageDrag}
+                onDragEnd={()=>{this.setState({draggedImage: null})}} data-server-img-id={msg["id"]}
+                ref={React.createRef()}/>
+        );
+        this.setState(images);
+    }
+
+    dropImageToCanvas(event) {
+        if (this.state.draggedImage === null) {
+            console.warn("Ignoring image drop to canvas since no image was chosen");
+            return;
+        }
+
+        this.props.socket.emit("dropImageToCanvas", {"id": this.state.draggedImage, "x": event.clientX,
+            "y": event.clientY, "room": this.props.room})
+    }
+
+    drawImageOnCanvas(msg) {
+        console.log("Got image draw message");
+        const imageID = msg["id"];
+        console.log(this.state.images[0].ref.current);
+        for (let i = 0; i < this.state.images.length; i++) {
+            if (this.state.images[i].props['data-server-img-id'] === imageID) {
+                let ctx = this.boardRef.current.getContext("2d");
+                ctx.drawImage(this.state.images[i].ref.current, msg["x"], msg["y"]);
+            }
+        }
+    }
+
     render() {
         return  <div>
                     <p> <canvas id="boardCanvas" onMouseDown={this.handleMouseDown}
                         onMouseUp={this.handleMouseUp} onMouseMove={this.handleMouseMove}
                         width={window.innerWidth * 0.69} height={window.innerHeight * 0.69}
-                        ref={this.boardRef}/>
+                        ref={this.boardRef} onDragOver={this.dragOver} onDrop={this.dropImageToCanvas} />
                     </p>
                     <div id="boardIndex">
                         <img className="boardButton" id={BOARD_PEN_ID} src={this.state.buttonImages.boardPen}
@@ -204,7 +277,15 @@ class Board extends React.Component {
                              alt="clear" onClick={this.buttonClick}/>
                         <input className="boardButton" id="penWidthInput" type="range" min="1" max="100"
                                value={this.state.penAttributes.width} onChange={this.onChangeWidth}/>
+                        <img className="boardButton" id={BOARD_ADD_IMAGE_ID} src={this.state.buttonImages.addImage}
+                             alt="add image" onClick={this.imageSelect}/>
                     </div>
+                    <p>
+                        <div id="imagesDiv" hidden={!this.state.imageDialogOn}
+                             onDragOver={this.dragOver} onDrop={this.dropImage}>
+                            <ImageDialog images={this.state.images}/>
+                        </div>
+                    </p>
                 </div>
 
     }

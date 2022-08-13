@@ -6,3 +6,16 @@
 #penWidthInput {
     width: 8%;
 }
+
+#imagesDiv {
+    position: absolute;
+    height: 69%;
+    width: 69%;
+    margin-left: 10%;
+    margin-top: 10%;
+}
+
+.dialogImage {
+    height: 100px;
+    width: 100px;
+}

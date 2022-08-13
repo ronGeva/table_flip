@@ -1,8 +1,11 @@
 import socketio
 import eventlet
 import time
+import base64
+from typing import Optional
 from authentication import AuthenticationManager
 from rooms import ChatsData, RoomsManager
+from images import ImagesManager
 
 
 sio = socketio.Server(async_mode='eventlet', cors_allowed_origins="http://localhost:3000")
@@ -11,6 +14,7 @@ app = socketio.WSGIApp(sio)
 
 authentication_manager = AuthenticationManager()
 rooms_manager = RoomsManager()
+images_manager = ImagesManager()
 message_history = {}
 
 
@@ -69,11 +73,24 @@ def add_room(sid, data):
     _emit_rooms_info(sid)
 
 
+def send_image_to_client(room_id: str, image_name: str, sid: Optional[str] = None):
+    image_data = images_manager.get_image_data(room_id=room_id, image_name=image_name)
+    base64_data = base64.b64encode(image_data)
+    # TODO: generate a real unique ID to image
+    sio.emit("newImage", {"base64_data": base64_data.decode('ascii'), "id": image_name}, to=sid)
+
+
+def send_all_current_images(sid: str, room_id: str):
+    for image_name in images_manager.images_iterator(room_id):  # TODO: fix synchronization bug here
+        send_image_to_client(room_id, image_name, sid)
+
+
 @sio.on("join_room")
 def client_join_room(sid, data):
     sio.enter_room(sid, data["room"])
     ChatsData.add_new_client(data["username"], data["room"])
     sio.emit("users_update", {"users": ChatsData.clients[data["room"]]}, room=data["room"])
+    send_all_current_images(sid, data["room"])
 
 
 @sio.on("delete_room")
@@ -106,6 +123,19 @@ def draw_on_board(sid, data):
 def draw_on_board(sid, data):
     room = data['room']
     sio.emit("clear", data, room=room)
+
+
+@sio.on("img_upload")
+def upload_image(sid, data):
+    room = data['room']
+    images_manager.add_image_to_room(room_id=room, image_name=data['image_name'], image_data=data['data'])
+    send_image_to_client(room_id=data['room'], image_name=data['image_name'])  # send to all room members
+
+
+@sio.on("dropImageToCanvas")
+def drop_image_to_canvas(sid, data):
+    room = data['room']
+    sio.emit("drawImageOnCanvas", data, room=room)
 
 
 def main():

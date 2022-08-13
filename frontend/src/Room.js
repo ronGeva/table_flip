@@ -23,9 +23,13 @@ class Room extends React.Component {
         this.handleChange = this.handleChange.bind(this);
         this.handleInput = this.handleInput.bind(this);
         this.props.socket.on("new_message", (msg) => this.receive_new_data(msg));
-        this.props.socket.emit("join_room", {"room": this.props.room, "username": this.props.username});
         this.props.socket.on("users_update", (msg) => this.update_room_users(msg))
         setInterval(() =>this.sendKeepalive() , 1000);
+    }
+
+    componentDidMount() {
+        console.log("emitting join_room");
+        this.props.socket.emit("join_room", {"room": this.props.room, "username": this.props.username});
     }
 
     sendKeepalive() {
